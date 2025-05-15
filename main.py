@@ -99,7 +99,7 @@ def main(page: ft.Page):
             page.update()
 
         def scan_worker():
-            with ThreadPoolExecutor(max_workers=20) as executor:
+            with ThreadPoolExecutor(max_workers=100) as executor:
                 futures = {executor.submit(scan_port, target_ip, port): port for port in ports_to_scan}
 
                 for future in as_completed(futures):
