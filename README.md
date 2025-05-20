@@ -1,4 +1,4 @@
-# Flet Port Scanner
+# Flet Easy Scanner
 
 FletとPythonで作ったGUIポートスキャナー マルチスレッドで高速スキャン<br>
 ...のはず。勉強目的で作成しました<br>
