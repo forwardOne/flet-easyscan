@@ -5,13 +5,15 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 def main(page: ft.Page):
     page.title = "EasyScan(Flet)"
-    page.window_width = 400
-    page.window_height = 400
+    page.window.width = 500
+    page.window.height = 600
+    page.window.maximizable = False
+    page.window.opacity = 0.95
     page.theme_mode = ft.ThemeMode.DARK
-
+    
     # UI要素
     target_input = ft.TextField(label="ターゲットIP/ホスト", value="127.0.0.1", expand=True)
-    port_range_input = ft.TextField(label="ポート範囲 (例: 1-1024)", value="1-500", expand=True)
+    port_range_input = ft.TextField(label="ポート範囲 (例: 1-1024)", value="1-1024", expand=True)
     scan_button = ft.ElevatedButton("スキャン開始", on_click=lambda _: start_scan())
     results_text = ft.Column([], expand=True, scroll="always")
     progress_bar = ft.ProgressBar(bar_height=10, expand=True, value=0, visible=False)
@@ -119,15 +121,15 @@ def main(page: ft.Page):
 
         threading.Thread(target=scan_worker, daemon=True).start()
 
-    # UI要素を追加
+    # UI要素を画面に追加
     page.add(
         ft.Column(
             [
                 ft.ResponsiveRow(
                     [
-                        ft.Container(content=target_input, col={'xs': 12, 'sm': 5, 'md': 5, 'lg': 5}),
-                        ft.Container(content=port_range_input, col={'xs': 12, 'sm': 5, 'md': 5, 'lg': 5}),
-                        ft.Container(content=scan_button, col={'xs': 12, 'sm': 2, 'md': 2, 'lg': 2}),
+                        ft.Container(content=target_input, col={'xs': 12, 'sm': 12, 'md': 12}),
+                        ft.Container(content=port_range_input, col={'xs': 12, 'sm': 12, 'md': 12}),
+                        ft.Container(content=scan_button, col={'xs': 12, 'sm': 12, 'md': 12}),
                     ],
                 ),
                 ft.Container(
