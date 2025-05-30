@@ -4,8 +4,9 @@ import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 def main(page: ft.Page):
+    # ページ要素
     page.title = "EasyScan(Flet)"
-    page.window.width = 500
+    page.window.width = 400
     page.window.height = 600
     page.window.maximizable = False
     page.window.opacity = 0.95
@@ -16,7 +17,7 @@ def main(page: ft.Page):
     port_range_input = ft.TextField(label="ポート範囲 (例: 1-1024)", value="1-1024", expand=True)
     scan_button = ft.ElevatedButton("スキャン開始", on_click=lambda _: start_scan())
     results_text = ft.Column([], expand=True, scroll="always")
-    progress_bar = ft.ProgressBar(bar_height=10, expand=True, value=0, visible=False)
+    status_text = ft.Text("準備完了", size=16, color="blue")
 
     def parse_port_range(port_range_str):
         ports = []
@@ -65,9 +66,7 @@ def main(page: ft.Page):
 
     def start_scan():
         results_text.controls.clear()
-        results_text.controls.append(ft.Text("スキャンを開始します...\n"))
-        progress_bar.value = 0
-        progress_bar.visible = True
+        status_text.value = "スキャン中..."
         scan_button.disabled = True
         open_ports_info.clear()
         page.update()
@@ -80,43 +79,28 @@ def main(page: ft.Page):
         except ValueError:
             results_text.controls.append(ft.Text("エラー: 不正なポート範囲です。例: 1-1024 または 80,443", color="red"))
             scan_button.disabled = False
-            progress_bar.visible = False
             page.update()
             return
 
         if not ports_to_scan:
             results_text.controls.append(ft.Text("スキャンするポートがありません。", color="red"))
             scan_button.disabled = False
-            progress_bar.visible = False
             page.update()
             return
-
-        total_ports = len(ports_to_scan)
-        scanned_count = 0
-
-        def update_progress():
-            nonlocal scanned_count
-            scanned_count += 1
-            progress_bar.value = scanned_count / total_ports
-            page.update()
 
         def scan_worker():
             with ThreadPoolExecutor(max_workers=100) as executor:
                 futures = {executor.submit(scan_port, target_ip, port): port for port in ports_to_scan}
 
                 for future in as_completed(futures):
-                    if future.result() is not False:
-                        update_progress()
-                    else:
-                        break
+                    future.result()
 
             # ポート番号順にソートして結果を表示
             for port, msg in sorted(open_ports_info):
                 results_text.controls.append(ft.Text(msg, color="green"))
 
-            results_text.controls.append(ft.Text("\nスキャンが完了しました。", color="blue"))
+            status_text.value = "スキャン完了"
             scan_button.disabled = False
-            progress_bar.visible = False
             page.update()
 
         threading.Thread(target=scan_worker, daemon=True).start()
@@ -132,12 +116,7 @@ def main(page: ft.Page):
                         ft.Container(content=scan_button, col={'xs': 12, 'sm': 12, 'md': 12}),
                     ],
                 ),
-                ft.Container(
-                    content=progress_bar,
-                    height=10,
-                    padding=ft.padding.symmetric(vertical=5),
-                ),
-                ft.Row([ft.Text("Result:", size=20)]),
+                ft.Row([ft.Text("Status:", size=20), status_text]),
                 ft.Container(
                     content=results_text,
                     alignment=ft.alignment.center,
