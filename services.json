@@ -1,0 +1,390 @@
+{
+  "1": {
+    "name": "TCPMUX (TCP Port Service Multiplexer)",
+    "protocol": "TCP"
+  },
+  "5": {
+    "name": "RJE (Remote Job Entry)",
+    "protocol": "TCP"
+  },
+  "7": {
+    "name": "Echo",
+    "protocol": "TCP"
+  },
+  "9": {
+    "name": "Discard",
+    "protocol": "TCP"
+  },
+  "11": {
+    "name": "SYSTAT (Active Users)",
+    "protocol": "TCP"
+  },
+  "13": {
+    "name": "Daytime",
+    "protocol": "TCP"
+  },
+  "17": {
+    "name": "QOTD (Quote of the Day)",
+    "protocol": "TCP"
+  },
+  "18": {
+    "name": "MSP (Message Send Protocol)",
+    "protocol": "TCP"
+  },
+  "19": {
+    "name": "Chargen (Character Generator)",
+    "protocol": "TCP"
+  },
+  "20": {
+    "name": "FTP-Data",
+    "protocol": "TCP"
+  },
+  "21": {
+    "name": "FTP",
+    "protocol": "TCP"
+  },
+  "22": {
+    "name": "SSH",
+    "protocol": "TCP"
+  },
+  "23": {
+    "name": "Telnet",
+    "protocol": "TCP"
+  },
+  "25": {
+    "name": "SMTP",
+    "protocol": "TCP"
+  },
+  "37": {
+    "name": "Time",
+    "protocol": "TCP"
+  },
+  "42": {
+    "name": "WINS Host Name Server",
+    "protocol": "TCP"
+  },
+  "43": {
+    "name": "WHOIS",
+    "protocol": "TCP"
+  },
+  "49": {
+    "name": "TACACS (Login Host Protocol)",
+    "protocol": "UDP"
+  },
+  "53": {
+    "name": "DNS",
+    "protocol": "TCP/UDP"
+  },
+  "67": {
+    "name": "DHCP Server",
+    "protocol": "UDP"
+  },
+  "68": {
+    "name": "DHCP Client",
+    "protocol": "UDP"
+  },
+  "69": {
+    "name": "TFTP",
+    "protocol": "TCP/UDP"
+  },
+  "70": {
+    "name": "Gopher",
+    "protocol": "TCP"
+  },
+  "79": {
+    "name": "Finger",
+    "protocol": "TCP"
+  },
+  "80": {
+    "name": "HTTP",
+    "protocol": "TCP"
+  },
+  "88": {
+    "name": "Kerberos",
+    "protocol": "TCP"
+  },
+  "101": {
+    "name": "HOSTNAME (NIC Host Name Server)",
+    "protocol": "TCP"
+  },
+  "102": {
+    "name": "ISO-TSAP (ISO Transport Service Access Point)",
+    "protocol": "TCP"
+  },
+  "107": {
+    "name": "RTelnet (Remote Telnet Service)",
+    "protocol": "TCP"
+  },
+  "109": {
+    "name": "POP2",
+    "protocol": "TCP"
+  },
+  "110": {
+    "name": "POP3",
+    "protocol": "TCP"
+  },
+  "111": {
+    "name": "RPCbind (Sun RPC)",
+    "protocol": "TCP"
+  },
+  "113": {
+    "name": "Ident (Authentication Service/TAP)",
+    "protocol": "TCP"
+  },
+  "115": {
+    "name": "SFTP (Simple File Transfer Protocol)",
+    "protocol": "TCP"
+  },
+  "118": {
+    "name": "SQL Services",
+    "protocol": "TCP"
+  },
+  "119": {
+    "name": "NNTP (Network News Transfer Protocol)",
+    "protocol": "UDP"
+  },
+  "123": {
+    "name": "NTP",
+    "protocol": "UDP"
+  },
+  "135": {
+    "name": "MS RPC (Microsoft Remote Procedure Call)",
+    "protocol": "TCP"
+  },
+  "137": {
+    "name": "NetBIOS-NS",
+    "protocol": "TCP/UDP"
+  },
+  "138": {
+    "name": "NetBIOS-DGM",
+    "protocol": "UDP"
+  },
+  "139": {
+    "name": "NetBIOS-SSN",
+    "protocol": "TCP"
+  },
+  "143": {
+    "name": "IMAP",
+    "protocol": "TCP"
+  },
+  "145": {
+    "name": "NETNEWS (Network News Transfer Protocol)",
+    "protocol": "TCP"
+  },
+  "161": {
+    "name": "SNMP",
+    "protocol": "TCP/UDP"
+  },
+  "162": {
+    "name": "SNMPTRAP",
+    "protocol": "TCP/UDP"
+  },
+  "177": {
+    "name": "XDMCP (X Display Manager Control Protocol)",
+    "protocol": "TCP"
+  },
+  "179": {
+    "name": "BGP (Border Gateway Protocol)",
+    "protocol": "TCP"
+  },
+  "194": {
+    "name": "IRC (Internet Relay Chat)",
+    "protocol": "TCP"
+  },
+  "201": {
+    "name": "AppleTalk Routing Maintenance",
+    "protocol": "TCP"
+  },
+  "209": {
+    "name": "QMTP (Quick Mail Transfer Protocol)",
+    "protocol": "TCP"
+  },
+  "210": {
+    "name": "Z39.50 (ANSI Z39.50)",
+    "protocol": "TCP"
+  },
+  "213": {
+    "name": "IPX (Internetwork Packet Exchange)",
+    "protocol": "UDP"
+  },
+  "220": {
+    "name": "IMAP3 (Interactive Mail Access Protocol v3)",
+    "protocol": "TCP"
+  },
+  "245": {
+    "name": "LINK (Display Systems Protocol)",
+    "protocol": "TCP"
+  },
+  "389": {
+    "name": "LDAP",
+    "protocol": "TCP/UDP"
+  },
+  "427": {
+    "name": "SLP (Service Location Protocol)",
+    "protocol": "UDP"
+  },
+  "443": {
+    "name": "HTTPS",
+    "protocol": "TCP"
+  },
+  "445": {
+    "name": "Microsoft-DS (SMB)",
+    "protocol": "TCP/UDP"
+  },
+  "465": {
+    "name": "SMTPS (SSL/TLS)",
+    "protocol": "TCP"
+  },
+  "514": {
+    "name": "Syslog",
+    "protocol": "UDP"
+  },
+  "512": {
+    "name": "rexec (Remote Process Execution)",
+    "protocol": "TCP"
+  },
+  "513": {
+    "name": "rlogin (Remote Login)",
+    "protocol": "TCP"
+  },
+  "515": {
+    "name": "LPD/LPR (Line Printer Daemon)",
+    "protocol": "TCP"
+  },
+  "520": {
+    "name": "RIP (Routing Information Protocol)",
+    "protocol": "UDP"
+  },
+  "524": {
+    "name": "NCP (NetWare Core Protocol)",
+    "protocol": "TCP"
+  },
+  "530": {
+    "name": "RPC (Remote Procedure Call)",
+    "protocol": "TCP"
+  },
+  "540": {
+    "name": "UUCP (Unix-to-Unix Copy Protocol)",
+    "protocol": "TCP"
+  },
+  "543": {
+    "name": "KLogin (Kerberos Login)",
+    "protocol": "TCP"
+  },
+  "544": {
+    "name": "KShell (Kerberos Shell)",
+    "protocol": "TCP"
+  },
+  "546": {
+    "name": "DHCPv6 Client",
+    "protocol": "UDP"
+  },
+  "547": {
+    "name": "DHCPv6 Server",
+    "protocol": "UDP"
+  },
+  "548": {
+    "name": "AFP (Apple Filing Protocol)",
+    "protocol": "TCP"
+  },
+  "554": {
+    "name": "RTSP (Real Time Streaming Protocol)",
+    "protocol": "TCP"
+  },
+  "563": {
+    "name": "NNTPS (NNTP over TLS/SSL)",
+    "protocol": "UDP"
+  },
+  "587": {
+    "name": "SMTP (Submission/TLS)",
+    "protocol": "TCP"
+  },
+  "636": {
+    "name": "LDAPS (SSL/TLS)",
+    "protocol": "TCP"
+  },
+  "691": {
+    "name": "MS-Exchange Routing",
+    "protocol": "TCP"
+  },
+  "993": {
+    "name": "IMAPS (SSL/TLS)",
+    "protocol": "TCP"
+  },
+  "995": {
+    "name": "POP3S (SSL/TLS)",
+    "protocol": "TCP"
+  },
+  "1080": {
+    "name": "SOCKS",
+    "protocol": "TCP"
+  },
+  "1025": {
+    "name": "NFS-L (Network File System - Listener)",
+    "protocol": "TCP"
+  },
+  "1026": {
+    "name": "Windows RPC (often)",
+    "protocol": "TCP"
+  },
+  "1027": {
+    "name": "Windows RPC (often)",
+    "protocol": "TCP"
+  },
+  "1028": {
+    "name": "Windows RPC (often)",
+    "protocol": "TCP"
+  },
+  "1029": {
+    "name": "Windows RPC (often)",
+    "protocol": "TCP"
+  },
+  "1030": {
+    "name": "Windows RPC (often)",
+    "protocol": "TCP"
+  },
+  "1433": {
+    "name": "Microsoft SQL Server",
+    "protocol": "TCP"
+  },
+  "1521": {
+    "name": "Oracle",
+    "protocol": "TCP"
+  },
+  "3306": {
+    "name": "MySQL",
+    "protocol": "TCP"
+  },
+  "3389": {
+    "name": "RDP (Remote Desktop)",
+    "protocol": "TCP"
+  },
+  "5432": {
+    "name": "PostgreSQL",
+    "protocol": "TCP"
+  },
+  "5900": {
+    "name": "VNC",
+    "protocol": "TCP"
+  },
+  "5901": {
+    "name": "VNC (Display 1)",
+    "protocol": "TCP"
+  },
+  "6379": {
+    "name": "Redis",
+    "protocol": "TCP"
+  },
+  "8000": {
+    "name": "HTTP-Alt",
+    "protocol": "TCP"
+  },
+  "8080": {
+    "name": "HTTP-Alt",
+    "protocol": "TCP"
+  },
+  "27017": {
+    "name": "MongoDB",
+    "protocol": "TCP"
+  }
+}
