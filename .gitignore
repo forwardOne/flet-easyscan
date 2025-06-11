@@ -1,0 +1,18 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environment
+# Replace .venv with your virtual environment's folder name if different
+.venv/
+venv/
+ENV/
+env/
+pip-selfcheck.json
+
+# IDE / Editor specific
+.vscode/
+.idea/
+*.swp
+*.swo

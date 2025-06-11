@@ -1,14 +1,12 @@
 import flet as ft
-import socket
 import json
 import threading
-from concurrent.futures import ThreadPoolExecutor, as_completed
+import scan_logic # scan_logic.py
+
 
 # --- Constants ---
 TARGET_IP_DEFAULT = "127.0.0.1" # 安全のためデフォルトはローカルホスト
 PORT_RANGE_DEFAULT = "1-1024" 
-SOCKET_TIMEOUT = 1 # 動作の確実性を担保するために1秒指定 短くしてもよい
-MAX_WORKERS = 200
 
 # --- Scanning statuses ---
 SCANNING_STATUS_PREPARING = "準備完了"
@@ -17,18 +15,6 @@ SCANNING_STATUS_SCANNING = "スキャン中"
 SCANNING_STATUS_COMPLETED = "スキャン完了"
 SCANNING_STATUS_VALUE_ERROR = "不正なポート範囲"
 SCANNING_STATUS_PORTS_DONT_EXIST = "スキャン対象ポート無し"
-
-# --- Socket error codes (Windows) ---
-ERROR_CODE_CONNECTION_REFUSED = 10061
-ERROR_CODE_WOULD_BLOCK = 10035
-
-# --- Port scan display statuses ---
-DISPLAY_STATUS_OPEN = "オープン"
-DISPLAY_STATUS_CONNECTION_REFUSED = "接続拒否"
-DISPLAY_STATUS_TIMEOUT = "タイムアウト"
-DISPLAY_STATUS_NO_RESPONSE = "応答なし"
-DISPLAY_STATUS_ERROR = "エラー"
-DISPLAY_STATUS_HOST_ERROR = "ホスト解決エラー"
 
 # --- Service Name Mapping ---
 SERVICES_FILE_PATH = "services.json"
@@ -50,7 +36,7 @@ def load_port_services(filepath: str) -> dict:
 # --- Main Function ---
 def main(page: ft.Page):
     # ページ要素
-    page.title = "EasyScan(Flet)"
+    page.title = "EasyScan(Socket)"
     page.window.width = 600
     page.window.height = 500
     page.window.maximizable = False
@@ -80,67 +66,7 @@ def main(page: ft.Page):
                 ports.append(int(part))
         return sorted(list(set(ports)))
 
-    open_ports_info = [] # ソート用にオープンポート情報を格納
-
-
-    # スキャンロジック本体
-    def scan_port(target_ip, port):
-        sock = None # 初期化
-        try:
-            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            sock.settimeout(SOCKET_TIMEOUT)
-
-            # ポート番号に対応するサービス名を取得
-            service_info = PORT_SERVICES.get(str(port))
-            port_display = f"{port}"
-            
-            # デフォルトプロトコルを設定
-            current_scan_protocol = "TCP"
-            
-            # service_infoがNoneでない(辞書である)ことをチェック
-            if service_info:
-                name = service_info.get("name", "")
-                protocol_from_json = service_info.get("protocol")
-                protocol_info = protocol_from_json if protocol_from_json else current_scan_protocol
-                port_display = f"{port} ({name}, {protocol_info})" if name else f"{port} (不明, {protocol_info})"
-            
-            result = sock.connect_ex((target_ip, port))
-
-            # ポートがオープンしている場合
-            if result == 0:
-                msg = f"{port_display}: {DISPLAY_STATUS_OPEN}"
-                open_ports_info.append((port, msg))
-                return True
-
-            # 接続が拒否された場合
-            elif result == ERROR_CODE_CONNECTION_REFUSED:
-                results_text.controls.append(ft.Text(f"{port_display}: {DISPLAY_STATUS_CONNECTION_REFUSED}", color="orange"))
-
-            # ブロックされた場合は視認性確保のため表示しない
-            elif result != ERROR_CODE_WOULD_BLOCK:
-                # 応答自体がない場合
-                results_text.controls.append(ft.Text(f"{port_display}: {DISPLAY_STATUS_NO_RESPONSE} (コード: {result})", color="orange"))
-
-        # ホスト名解決エラー
-        except socket.gaierror:
-            results_text.controls.append(ft.Text(f"{DISPLAY_STATUS_HOST_ERROR}: '{target_ip}' (ポート: {port_display})", color="red"))
-            return False
-
-        # タイムアウトした場合
-        except socket.timeout:
-            results_text.controls.append(ft.Text(f"{port_display}: {DISPLAY_STATUS_TIMEOUT}", color="orange"))
-
-        # その他のエラー
-        except Exception as e:
-            results_text.controls.append(ft.Text(f"{port_display}: {DISPLAY_STATUS_ERROR} - {e}", color="orange"))
-
-        # ソケットのクローズ
-        finally:
-            if sock:
-                sock.close()
-
-        # スキャン試行完了(オープンとは限らない)
-        return True 
+    # open_ports_info は scan_logic からの結果を直接処理するため不要
 
 
     # スキャン開始時の処理
@@ -148,15 +74,15 @@ def main(page: ft.Page):
         results_text.controls.clear()
         status_text.value = f"{SCANNING_STATUS_SCANNING}"
         scan_button.disabled = True
-        open_ports_info.clear()
         page.update() # 開始時に既存情報をクリアして画面更新
 
         target_ip = target_input.value
         port_range_str = port_range_input.value
         
-        # IPアドレスの検証
         try:
+            # ポート範囲のパース (これはUIからの入力なので引き続き必要)
             ports_to_scan = parse_port_range(port_range_str)
+            print(f"\n--- Scan (via scan_logic) started for: {target_ip} ---")
         except ValueError:
             results_text.controls.append(ft.Text(f"{SCANNING_STATUS_VALUE_ERROR}", color="red"))
             scan_button.disabled = False
@@ -169,29 +95,65 @@ def main(page: ft.Page):
             page.update()
             return # 存在しない場合は終了
         
-        # スレッドプールを使用してスキャンロジックを並列実行
+        # scan_logic を使用してスキャンを実行するワーカースレッド
         def scan_worker():
-            with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
-                futures = {executor.submit(scan_port, target_ip, port): port for port in ports_to_scan}
+            # scan_logic.scan_ports を呼び出し
+            # 今回はTCPスキャンのみを実行
+            scan_results = scan_logic.scan_ports(
+                target_ip=target_ip,
+                tcp_ports=ports_to_scan,
+                udp_ports=None # UDPは次回以降
+                # tcp_timeout は scan_logic のデフォルト値を使用
+            )
 
-                for future in as_completed(futures): # 完了したスキャン結果を待機
-                    future.result() # 結果を取得した状態を保持
+            # UI更新のために結果をメインスレッドに渡す必要があるが、
+            # Fletでは page.update() をワーカースレッドから直接呼ぶことは非推奨。
+            # ただし、小規模な更新や、ユーザーがpage.update()のタイミングを制御できる場合は許容されることも。
+            # ここでは、結果表示の更新を行う。
+            # results_text.controls.clear() # スキャン開始時にクリア済み
 
-            # ポート番号順にソートして結果を表示
-            for port, msg in sorted(open_ports_info):
-                results_text.controls.append(ft.Text(msg, color="green"))
+            open_ports_count = 0
+            if not scan_results:
+                results_text.controls.append(ft.Text("スキャン結果がありませんでした。", color="orange"))
+            elif any(res.get('status', '').startswith('invalid_ip') for res in scan_results):
+                results_text.controls.append(ft.Text(f"エラー: {scan_results[0]['status']}", color="red"))
+            else:
+                for res in scan_results: # scan_logicからの結果は既にソート済み
+                    port_num_str = str(res['port'])
+                    scan_type = res.get('type', 'N/A').upper()
+                    status = res['status']
+
+                    service_name_display = ""
+                    if port_num_str in PORT_SERVICES:
+                        service_info = PORT_SERVICES.get(port_num_str)
+                        if service_info:
+                            name_from_json = service_info.get("name", "")
+                            protocol_from_json = service_info.get("protocol", "").upper()
+                            if scan_type in protocol_from_json or "TCP/UDP" in protocol_from_json or not protocol_from_json:
+                                service_name_display = name_from_json
+
+                    display_text = f"{res['port']}/{res.get('type','n/a')} - {status}"
+                    if service_name_display:
+                        display_text += f" ({service_name_display})"
+
+                    color = "orange" # Default color
+                    if status == 'open':
+                        color = "green"
+                        open_ports_count += 1
+                    elif 'error' in status or 'oserror' in status:
+                        color = "red"
+                    elif status == 'closed': # closed は表示しないか、控えめに
+                        continue # 表示しない場合
+                        # color = ft.colors.with_opacity(0.5, "grey") # 控えめに表示する場合
+                    
+                    results_text.controls.append(ft.Text(display_text, color=color))
+
+                if open_ports_count == 0 and not any(r['status'] == 'open' for r in scan_results if not r.get('status','').startswith('invalid_ip')):
+                    results_text.controls.append(ft.Text("オープンポートは見つかりませんでした。", color="blue"))
 
             status_text.value = f"{SCANNING_STATUS_COMPLETED}"
             scan_button.disabled = False
-            # 画面更新してソート後のスキャン結果を表示
-            # Fletの仕様で、スレッドセーフ
             page.update()
-            
-            # ターミナルに出力
-            print(f"スキャン完了: {len(open_ports_info)} 個のオープンポートが見つかりました。")
-            for item in open_ports_info:
-                print(item)
-            return open_ports_info
         
         # スキャンを非同期で実行
         threading.Thread(target=scan_worker, daemon=True).start()
