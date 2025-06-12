@@ -4,13 +4,12 @@ import threading
 import scan_logic # scan_logic.py
 
 
-
 # --- Constants ---
 TARGET_IP_DEFAULT = "127.0.0.1" # localhost
 PORT_RANGE_DEFAULT = "1-450,5357" # safe range for testing
 
 # --- Service Name Mapping ---
-SERVICES_FILE_PATH = "services.json" # service name map
+SERVICES_FILE_PATH = "services_name.json" # service name map
 PORT_SERVICES = {}
 
 # --- Scanning statuses ---
@@ -46,36 +45,52 @@ def _parse_port_range(port_range_str: str) -> list[int]:
             ports.append(int(part))
     return sorted(list(set(ports)))
 
-def _create_result_text_widget(res_item: dict, port_services_data: dict) -> tuple[ft.Text | None, bool]:
-    ''' スキャン結果を成型しFlet Textとオープンかどうかのフラグを返す '''
+def _create_result_text_widget(res_item: dict, port_services_data: dict) -> tuple[ft.Text | None, bool, str, str]:
+    ''' スキャン結果を成型しFlet Text、オープンフラグ、サービス名、詳細情報を返す
+    Returns:
+        tuple: (Flet Textウィジェット or None, オープンポートかどうかのbool,
+                サービス名文字列, 詳細情報文字列)
+    '''
+
     status = res_item['status']
     is_open_port = False
     
     # 'closed' ステータスのポートは表示しない
     if status == 'closed':
-        return None, False
+        return None, False, "", "" # サービス名と詳細情報として空文字列を追加
     
     # ポート番号とスキャンタイプ
     port_num_str = str(res_item['port'])
     scan_type = res_item.get('type', 'N/A').upper()
-    service_name_display = ""
+    service_name_for_col = ""
+    description_for_col = ""
     
     # ポート番号がサービス定義に存在するか
     if port_num_str in port_services_data:
-        service_info = port_services_data.get(port_num_str)
-        # プロトコル名の確認
-        if service_info:
-            name_from_json = service_info.get("name", "")
-            protocol_from_json = service_info.get("protocol", "").upper()
-            # スキャンタイプの確認
+        service_entry = port_services_data.get(port_num_str) # これは辞書またはリストの可能性があります
+
+        if isinstance(service_entry, list):
+            for item in service_entry:
+                # .get()を呼び出す前にitemが辞書であることを確認
+                if isinstance(item, dict):
+                    protocol_from_json = item.get("protocol", "").upper()
+                    # スキャンタイプが一致するか、JSON側でプロトコル指定がないか、TCP/UDP許容の場合
+                    if scan_type in protocol_from_json or "TCP/UDP" in protocol_from_json or not protocol_from_json:
+                        service_name_for_col = item.get("service_name", "")
+                        description_for_col = item.get("description", "")
+                        break # 一致するプロトコルが見つかった
+        elif isinstance(service_entry, dict):
+            protocol_from_json = service_entry.get("protocol", "").upper()
+            # スキャンタイプが一致するか、JSON側でプロトコル指定がないか、TCP/UDP許容の場合
             if scan_type in protocol_from_json or "TCP/UDP" in protocol_from_json or not protocol_from_json:
-                service_name_display = name_from_json
-                
+                service_name_for_col = service_entry.get("service_name", "")
+                description_for_col = service_entry.get("description", "")
+
     # 表示用テキストの成型
     display_text = f"{res_item['port']}/{res_item.get('type','n/a')} - {status}"
-    # サービス名が取得できた場合 表示用テキストの末尾に追加
-    if service_name_display:
-        display_text += f" ({service_name_display})"
+    # 短いサービス名が取得できた場合 表示用テキストの末尾に追加
+    if service_name_for_col:
+        display_text += f" ({service_name_for_col})"
         
     # ステータスカラー
     color = "orange"
@@ -84,7 +99,7 @@ def _create_result_text_widget(res_item: dict, port_services_data: dict) -> tupl
         is_open_port = True
     elif 'error' in status or 'oserror' in status:
         color = "red"
-    return ft.Text(display_text, color=color), is_open_port
+    return ft.Text(display_text, color=color), is_open_port, service_name_for_col, description_for_col
 
 
 
@@ -92,8 +107,8 @@ def _create_result_text_widget(res_item: dict, port_services_data: dict) -> tupl
 def main(page: ft.Page):
     # ページ要素
     page.title = "EasyScan"
-    page.window.width = 700
-    page.window.height = 800
+    page.window.width = 800
+    page.window.height = 500
     page.window.maximizable = False
     page.window.opacity = 0.95
     page.theme_mode = ft.ThemeMode.SYSTEM
@@ -132,7 +147,8 @@ def main(page: ft.Page):
             ft.DataColumn(ft.Text("Port")),
             ft.DataColumn(ft.Text("Protocol")),
             ft.DataColumn(ft.Text("State")),
-            ft.DataColumn(ft.Text("Service/Version")), # Combined for now
+            ft.DataColumn(ft.Text("Service")),
+            ft.DataColumn(ft.Text("Version")),
         ],
         rows=[],
         expand=True,
@@ -221,7 +237,7 @@ def main(page: ft.Page):
             else:
                 for res_item in scan_results: # scan_logicからの結果は既にソート済み
                     # "Scan Output" Tab
-                    text_widget, is_open = _create_result_text_widget(res_item, PORT_SERVICES)
+                    text_widget, is_open, service_name_for_col, description_for_col = _create_result_text_widget(res_item, PORT_SERVICES)
                     if text_widget:
                         scan_output_log_area.controls.append(text_widget)
                     if is_open:
@@ -229,17 +245,16 @@ def main(page: ft.Page):
                     
                     # "Ports/Hosts" Tab - 'closed' 以外を表示
                     if res_item['status'] != 'closed':
-                        service_name = text_widget.value.split('(')[-1].replace(')','').strip() if text_widget and '(' in text_widget.value else "N/A"
-                        if " - " in service_name: # "status (service_name)" から service_name を抽出
-                            service_name = service_name.split('(')[-1].replace(')','').strip() if '(' in service_name else service_name.split(" - ")[-1].strip()
+                        # banner_info = res_item.get('banner', "N/A") # バナー情報はロールバックしたため、この行は不要
 
                         ports_hosts_table.rows.append(
                             ft.DataRow(cells=[
                                 ft.DataCell(ft.Text(target_ip)),
                                 ft.DataCell(ft.Text(str(res_item['port']))),
                                 ft.DataCell(ft.Text(res_item.get('type', 'N/A').upper())),
-                                ft.DataCell(ft.Text(res_item['status'], color=text_widget.color if text_widget else "black")),
-                                ft.DataCell(ft.Text(service_name if service_name != res_item['status'] else "N/A")),
+                                ft.DataCell(ft.Text(res_item['status'], color=text_widget.color if text_widget else "default")),
+                                ft.DataCell(ft.Text(service_name_for_col if service_name_for_col else "N/A")), # "Service" カラム
+                                ft.DataCell(ft.Text(description_for_col if description_for_col else "N/A")), # "Version" カラム
                             ])
                         )
                 

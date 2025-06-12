@@ -244,7 +244,7 @@ def scan_ports(
 
 # --- Test ---
 if __name__ == "__main__":
-    SERVICES_FILE_PATH = "services.json" # services.jsonのパス
+    SERVICES_FILE_PATH = "services_name.json" # services_name.jsonのパス
     PORT_SERVICES_DATA = {}
 
     def _load_port_services_for_test(filepath: str) -> dict:
@@ -288,8 +288,8 @@ if __name__ == "__main__":
     )
 
     print(f"\nScan report for {target_ip}")
-    # 表示ヘッダーを調整
-    print(f"{'PORT/TYPE':<12} {'STATE':<15} SERVICE")
+    # 表示ヘッダーを調整 (SERVICE と DESCRIPTION を追加)
+    print(f"{'PORT/TYPE':<12} {'STATE':<15} {'SERVICE':<25} DESCRIPTION")
 
     displayed_ports = 0
     closed_ports_count = 0
@@ -301,19 +301,32 @@ if __name__ == "__main__":
         scan_type_for_service_lookup = res['type'].upper()
         status = res['status']
 
-        service_name_display = ""
+        service_name_from_json = ""
+        description_from_json = ""
         if port_num_str in PORT_SERVICES_DATA:
-            service_info = PORT_SERVICES_DATA[port_num_str]
-            name_from_json = service_info.get("name", "")
-            protocol_from_json = service_info.get("protocol", "").upper() # "TCP", "UDP", "TCP/UDP"
-            # スキャンタイプが一致するか、JSON側でプロトコル指定がない場合
-            if scan_type_for_service_lookup in protocol_from_json or not protocol_from_json:
-                service_name_display = name_from_json
+            service_entry = PORT_SERVICES_DATA.get(port_num_str) # 安全のため .get() を使用。辞書またはリストの可能性あり
+
+            if isinstance(service_entry, list):
+                for item in service_entry:
+                    if isinstance(item, dict):
+                        protocol_from_json = item.get("protocol", "").upper()
+                        if scan_type_for_service_lookup in protocol_from_json or "TCP/UDP" in protocol_from_json or not protocol_from_json:
+                            service_name_from_json = item.get("service_name", "")
+                            description_from_json = item.get("description", "")
+                            break # 一致するプロトコルが見つかった
+            elif isinstance(service_entry, dict):
+                protocol_from_json = service_entry.get("protocol", "").upper()
+                if scan_type_for_service_lookup in protocol_from_json or "TCP/UDP" in protocol_from_json or not protocol_from_json:
+                    service_name_from_json = service_entry.get("service_name", "")
+                    description_from_json = service_entry.get("description", "")
+            elif service_entry is None: # port_num_str が PORT_SERVICES_DATA にない場合を処理
+                pass # service_name_from_json と description_from_json は "" のまま
+
 
         port_type_display = f"{res['port']}/{res['type']}"
 
         if status in interesting_statuses or 'error' in status or 'oserror' in status:
-            print(f"{port_type_display:<12} {status:<15} {service_name_display}")
+            print(f"{port_type_display:<12} {status:<15} {service_name_from_json:<25} {description_from_json}")
             displayed_ports += 1
         elif status == 'closed':
             closed_ports_count += 1

@@ -6,8 +6,8 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 '''EasyScan(Socket)
 ScapyやNpcapに依存せず、Pythonの標準ライブラリのみで実装したGUI簡易スキャナーです。
-指定されたITアドレスとポート範囲に対してTCP(3wayハンドシェイク)スキャンを行います。
-アプリの初期段階の名残として残しています。jsonファイルは本体と共有しています。
+指定されたIPアドレスとポート範囲に対してTCP(3wayハンドシェイク)スキャンを行います。
+アプリの初期段階の名残として残しています。jsonファイルは本体と別のものを使用しています。
 
 PowerShellかターミナルから直接実行してください。
 
