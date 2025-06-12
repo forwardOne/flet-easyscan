@@ -1,19 +1,15 @@
 from scapy.all import IP, TCP, UDP, sr1, conf, ICMP
 import platform
 import socket
-import json # サービス情報を読み込むために追加
+import json
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 
 # --- Constants ---
 DEFAULT_TIMEOUT_TCP = 3
 MAX_SCAN_WORKERS_TCP = 2
-
 DEFAULT_TIMEOUT_UDP = 5
 MAX_SCAN_WORKERS_UDP = 2
-
-DEFAULT_TCP_PORTS = [21, 22, 23, 25, 80, 110, 135, 137, 139, 443, 445, 3389, 8080]
-DEFAULT_UDP_PORTS = [53, 67, 68, 69, 123, 137, 138, 161, 162, 500, 514, 520]
 
 
 # --- Helper for IP Validation ---
@@ -232,7 +228,6 @@ def scan_ports(
         for res in tcp_res:
             res['type'] = 'tcp'
             all_results.append(res)
-        print(f"--- TCP scan")
 
     # UDPスキャン呼び出し
     if udp_ports:
@@ -240,7 +235,6 @@ def scan_ports(
         for res in udp_res:
             res['type'] = 'udp'
             all_results.append(res)
-        print(f"--- UDP scan")
 
     # ポート番号でソート
     all_results.sort(key=lambda x: x['port'])
