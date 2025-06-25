@@ -107,11 +107,13 @@ def _create_result_text_widget(res_item: dict, port_services_data: dict) -> tupl
 def main(page: ft.Page):
     # ページ要素
     page.title = "EasyScan"
-    page.window.width = 800
-    page.window.height = 500
+    page.window.width = 850
+    page.window.height = 600
+    page.window.resizable = True
+    page.window.minimizable = True
     page.window.maximizable = False
     page.window.opacity = 0.95
-    page.theme_mode = ft.ThemeMode.SYSTEM
+    page.theme_mode = ft.ThemeMode.DARK
     
     # Init global PORT_SERVICES
     global PORT_SERVICES
@@ -290,8 +292,8 @@ def main(page: ft.Page):
                 ),
                 ft.Row(
                     [
-                        ft.Text("Status:", size=20),
-                        ft.Container(content=status_text, margin=ft.margin.only(top=3)),
+                        ft.Text("Status:"),
+                        ft.Container(content=status_text),
                     ],
                     alignment=ft.MainAxisAlignment.START
                 ),
