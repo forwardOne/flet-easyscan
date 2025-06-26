@@ -45,7 +45,7 @@ DISPLAY_STATUS_ERROR = "エラー"
 DISPLAY_STATUS_HOST_ERROR = "ホスト解決エラー"
 
 # --- Service Name Mapping ---
-SERVICES_FILE_PATH = "services.json"
+SERVICES_FILE_PATH = "data/services.json"
 PORT_SERVICES = {}
 
 def load_port_services(filepath: str) -> dict:

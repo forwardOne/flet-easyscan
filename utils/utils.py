@@ -1,6 +1,20 @@
 import flet as ft
+import json
 
-# --- Helper Functions (moved to module level) ---
+
+def load_port_services(filepath: str) -> dict:
+    """ 指定されたパスからポートサービス定義JSONファイルを読み込む """
+    try:
+        with open(filepath, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except FileNotFoundError:
+        print(f"定義ファイル '{filepath}' が見つかりません。")
+        return {}
+    except json.JSONDecodeError:
+        print(f"定義ファイル '{filepath}' の形式が正しくありません。")
+        return {}
+
+
 def parse_port_range(port_range_str: str) -> list[int]:
     ''' ポート範囲文字列をパースしてポート番号のリストを返す '''
     ports = []
@@ -13,6 +27,8 @@ def parse_port_range(port_range_str: str) -> list[int]:
         else:
             ports.append(int(part))
     return sorted(list(set(ports)))
+
+
 
 def create_result_text_widget(res_item: dict, port_services_data: dict) -> tuple[ft.Text | None, bool, str, str]:
     ''' スキャン結果を成型しFlet Text、オープンフラグ、サービス名、詳細情報を返す
