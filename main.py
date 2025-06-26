@@ -1,7 +1,8 @@
 import flet as ft
 import json
 import threading
-import scan_logic # scan_logic.py
+import scan_logic
+from utils import parse_port_range, create_result_text_widget
 
 
 # --- Constants ---
@@ -9,8 +10,7 @@ TARGET_IP_DEFAULT = "127.0.0.1" # localhost
 PORT_RANGE_DEFAULT = "1-450,5357" # safe range for testing
 
 # --- Service Name Mapping ---
-SERVICES_FILE_PATH = "services_name.json" # service name map
-PORT_SERVICES = {}
+SERVICES_FILE_PATH = "services_name.json"
 
 # --- Scanning statuses ---
 SCANNING_STATUS_PREPARING = "Ready"
@@ -32,80 +32,185 @@ def load_port_services(filepath: str) -> dict:
         return {}
 
 
-# --- Helper Functions (moved to module level) ---
-def _parse_port_range(port_range_str: str) -> list[int]:
-    ''' ポート範囲文字列をパースしてポート番号のリストを返す '''
-    ports = []
-    parts = port_range_str.split(',')
-    for part in parts:
-        if '-' in part:
-            start, end = map(int, part.split('-'))
-            ports.extend(range(start, end + 1))
-        else:
-            ports.append(int(part))
-    return sorted(list(set(ports)))
 
-def _create_result_text_widget(res_item: dict, port_services_data: dict) -> tuple[ft.Text | None, bool, str, str]:
-    ''' スキャン結果を成型しFlet Text、オープンフラグ、サービス名、詳細情報を返す
-    Returns:
-        tuple: (Flet Textウィジェット or None, オープンポートかどうかのbool,
-                サービス名文字列, 詳細情報文字列)
-    '''
+# --- Main Function ---
+class EasyScanApp(ft.Container):
+    def __init__(self, page: ft.Page):
+        super().__init__()
+        self.expand = True
+        self.page = page
+        self.port_services = load_port_services(SERVICES_FILE_PATH)
 
-    status = res_item['status']
-    is_open_port = False
-    
-    # 'closed' ステータスのポートは表示しない
-    if status == 'closed':
-        return None, False, "", "" # サービス名と詳細情報として空文字列を追加
-    
-    # ポート番号とスキャンタイプ
-    port_num_str = str(res_item['port'])
-    scan_type = res_item.get('type', 'N/A').upper()
-    service_name_for_col = ""
-    description_for_col = ""
-    
-    # ポート番号がサービス定義に存在するか
-    if port_num_str in port_services_data:
-        service_entry = port_services_data.get(port_num_str) # これは辞書またはリストの可能性があります
+        # --- Input Area Elements ---
+        self.target_input = ft.TextField(label="Target IP/Host", value=f"{TARGET_IP_DEFAULT}", expand=True)
 
-        if isinstance(service_entry, list):
-            for item in service_entry:
-                # .get()を呼び出す前にitemが辞書であることを確認
-                if isinstance(item, dict):
-                    protocol_from_json = item.get("protocol", "").upper()
-                    # スキャンタイプが一致するか、JSON側でプロトコル指定がないか、TCP/UDP許容の場合
-                    if scan_type in protocol_from_json or "TCP/UDP" in protocol_from_json or not protocol_from_json:
-                        service_name_for_col = item.get("service_name", "")
-                        description_for_col = item.get("description", "")
-                        break # 一致するプロトコルが見つかった
-        elif isinstance(service_entry, dict):
-            protocol_from_json = service_entry.get("protocol", "").upper()
-            # スキャンタイプが一致するか、JSON側でプロトコル指定がないか、TCP/UDP許容の場合
-            if scan_type in protocol_from_json or "TCP/UDP" in protocol_from_json or not protocol_from_json:
-                service_name_for_col = service_entry.get("service_name", "")
-                description_for_col = service_entry.get("description", "")
+        profile_options = [
+            ft.dropdown.Option("Default (TCP & UDP)"),
+            ft.dropdown.Option("TCP Only"),
+            ft.dropdown.Option("UDP Only"),
+        ]
+        self.profile_dropdown = ft.Dropdown(
+            label="Profile",
+            options=profile_options,
+            value="Default (TCP & UDP)",
+            expand=True
+        )
 
-    # 表示用テキストの成型
-    display_text = f"{res_item['port']}/{res_item.get('type','n/a')} - {status}"
-    # 短いサービス名が取得できた場合 表示用テキストの末尾に追加
-    if service_name_for_col:
-        display_text += f" ({service_name_for_col})"
+        self.port_range_input = ft.TextField(label="Port Range (e.g. 1-1024)", value=f"{PORT_RANGE_DEFAULT}", expand=True)
+        self.scan_button = ft.ElevatedButton(f"Scan", on_click=self.start_scan)
+        self.status_text = ft.Text(f"{SCANNING_STATUS_PREPARING}", size=16, color="blue")
+
+        # --- Output Area Elements ---
+        self.scan_output_log_area = ft.Column([], expand=True, scroll="always")
+
+        self.ports_hosts_table = ft.DataTable(
+            columns=[
+                ft.DataColumn(ft.Text("Host/IP")),
+                ft.DataColumn(ft.Text("Port")),
+                ft.DataColumn(ft.Text("Protocol")),
+                ft.DataColumn(ft.Text("State")),
+                ft.DataColumn(ft.Text("Service")),
+                ft.DataColumn(ft.Text("Description")),
+            ],
+            rows=[],
+            expand=True,
+        )
+
+        self.output_tabs = ft.Tabs(
+            selected_index=0,
+            animation_duration=300,
+            tabs=[
+                ft.Tab(text="Scan Output", content=self.scan_output_log_area),
+                ft.Tab(text="Ports/Hosts", content=ft.Column([self.ports_hosts_table], scroll="always", expand=True)),
+            ],
+            expand=True,
+        )
+
+        self.content = self.build()
+
+    def build(self):
+        return ft.Column(
+            [
+                ft.ResponsiveRow(
+                    [
+                        ft.Container(content=self.target_input, padding=5, col={'xs': 12, 'sm': 6, 'md': 6}),
+                        ft.Container(content=self.profile_dropdown, padding=5, col={'xs': 12, 'sm': 6, 'md': 6}),
+                    ],
+                    alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                ),
+                ft.ResponsiveRow(
+                    [
+                        ft.Container(content=self.port_range_input, padding=5, col={'xs': 12, 'sm': 12, 'md': 10}),
+                        ft.Container(content=self.scan_button, padding=5, margin=ft.margin.only(top=3), col={'xs': 12, 'sm': 12, 'md': 2})
+                    ],
+                    alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                ),
+                ft.Row(
+                    [
+                        ft.Text("Status:"),
+                        ft.Container(content=self.status_text),
+                    ],
+                    alignment=ft.MainAxisAlignment.START
+                ),
+                self.output_tabs,
+            ],
+            expand=True
+        )
+
+    def start_scan(self, e):
+        self.scan_output_log_area.controls.clear()
+        self.ports_hosts_table.rows.clear()
+        self.status_text.value = f"{SCANNING_STATUS_SCANNING}"
+        self.scan_button.disabled = True
+        self.page.update()
+
+        target_ip = self.target_input.value
+        port_range_str = self.port_range_input.value
         
-    # ステータスカラー
-    color = "orange"
-    if status == 'open':
-        color = "green"
-        is_open_port = True
-    elif 'error' in status or 'oserror' in status:
-        color = "red"
-    return ft.Text(display_text, color=color), is_open_port, service_name_for_col, description_for_col
+        # パース呼び出し
+        try:
+            ports_to_scan = parse_port_range(port_range_str)
+            print(f"\n--- TCP/UDP Scan (via scan_logic) started for: {target_ip} on ports: {port_range_str} ---")
+        # 不正値の場合は終了
+        except ValueError:
+            self.scan_output_log_area.controls.append(ft.Text(f"{SCANNING_STATUS_PORTS_DONT_EXIST}", color="red"))
+            self.scan_button.disabled = False
+            self.page.update()
+            return
+        # 存在しない場合は終了
+        if not ports_to_scan:
+            self.scan_output_log_area.controls.append(ft.Text(f"{SCANNING_STATUS_PORTS_DONT_EXIST}", color="red"))
+            self.scan_button.disabled = False
+            self.page.update()
+            return
+        
+        threading.Thread(target=self.scan_worker, args=(target_ip, ports_to_scan), daemon=True).start()
 
+    def scan_worker(self, target_ip: str, ports_to_scan: list[int]):
+        selected_profile = self.profile_dropdown.value
+        tcp_ports_to_scan = None
+        udp_ports_to_scan = None
+
+        if selected_profile == "Default (TCP & UDP)":
+            tcp_ports_to_scan = ports_to_scan
+            udp_ports_to_scan = ports_to_scan
+        elif selected_profile == "TCP Only":
+            tcp_ports_to_scan = ports_to_scan
+        elif selected_profile == "UDP Only":
+            udp_ports_to_scan = ports_to_scan
+
+        scan_results = scan_logic.scan_ports(
+            target_ip=target_ip,
+            tcp_ports=tcp_ports_to_scan,
+            udp_ports=udp_ports_to_scan
+        )
+
+        open_ports_count = 0
+        if not scan_results:
+            self.scan_output_log_area.controls.append(ft.Text("スキャン結果がありませんでした。", color="orange"))
+        elif any(res.get('status', '').startswith('invalid_ip') for res in scan_results):
+            error_message = f"エラー: {scan_results[0]['status']}"
+            self.scan_output_log_area.controls.append(ft.Text(error_message, color="red"))
+            self.ports_hosts_table.rows.append(
+                ft.DataRow(cells=[
+                    ft.DataCell(ft.Text(target_ip)),
+                    ft.DataCell(ft.Text("-")),
+                    ft.DataCell(ft.Text("-")),
+                    ft.DataCell(ft.Text(error_message, color="red")),
+                    ft.DataCell(ft.Text("-")),
+                    ft.DataCell(ft.Text("-")),
+                ])
+            )
+        else:
+            for res_item in scan_results:
+                text_widget, is_open, service_name, description = create_result_text_widget(res_item, self.port_services)
+                if text_widget:
+                    self.scan_output_log_area.controls.append(text_widget)
+                if is_open:
+                    open_ports_count += 1
+                
+                if res_item['status'] != 'closed':
+                    self.ports_hosts_table.rows.append(
+                        ft.DataRow(cells=[
+                            ft.DataCell(ft.Text(target_ip)),
+                            ft.DataCell(ft.Text(str(res_item['port']))),
+                            ft.DataCell(ft.Text(res_item.get('type', 'N/A').upper())),
+                            ft.DataCell(ft.Text(res_item['status'], color=text_widget.color if text_widget else "default")),
+                            ft.DataCell(ft.Text(service_name if service_name else "N/A")),
+                            ft.DataCell(ft.Text(description if description else "N/A")),
+                        ])
+                    )
+            
+            if open_ports_count == 0 and not any(res.get('status', '').startswith('invalid_ip') for res in scan_results):
+                self.scan_output_log_area.controls.append(ft.Text("オープンポートは見つかりませんでした。", color="blue"))
+
+        self.status_text.value = f"{SCANNING_STATUS_COMPLETED}"
+        self.scan_button.disabled = False
+        self.page.update()
 
 
 # --- Main Function ---
 def main(page: ft.Page):
-    # ページ要素
     page.title = "EasyScan"
     page.window.width = 850
     page.window.height = 600
@@ -114,194 +219,9 @@ def main(page: ft.Page):
     page.window.maximizable = False
     page.window.opacity = 0.95
     page.theme_mode = ft.ThemeMode.DARK
-    
-    # Init global PORT_SERVICES
-    global PORT_SERVICES
-    PORT_SERVICES = load_port_services(SERVICES_FILE_PATH)
 
-
-    # --- Input Area Elements ---
-    target_input = ft.TextField(label="Target IP/Host", value=f"{TARGET_IP_DEFAULT}", expand=True)
-
-    profile_options = [
-        ft.dropdown.Option("Default (TCP & UDP)"),
-        ft.dropdown.Option("TCP Only"),
-        ft.dropdown.Option("UDP Only"),
-    ]
-    profile_dropdown = ft.Dropdown(
-        label="Profile",
-        options=profile_options,
-        value="Default (TCP & UDP)",
-        expand=True
-    )
-
-    port_range_input = ft.TextField(label="Port Range (e.g. 1-1024)", value=f"{PORT_RANGE_DEFAULT}", expand=True)
-    scan_button = ft.ElevatedButton(f"Scan", on_click=lambda _: start_scan())
-    status_text = ft.Text(f"{SCANNING_STATUS_PREPARING}", size=16, color="blue")
-
-
-    # --- Output Area Elements ---
-    scan_output_log_area = ft.Column([], expand=True, scroll="always") # For "Scan Output" tab
-
-    ports_hosts_table = ft.DataTable(
-        columns=[
-            ft.DataColumn(ft.Text("Host/IP")),
-            ft.DataColumn(ft.Text("Port")),
-            ft.DataColumn(ft.Text("Protocol")),
-            ft.DataColumn(ft.Text("State")),
-            ft.DataColumn(ft.Text("Service")),
-            ft.DataColumn(ft.Text("Version")),
-        ],
-        rows=[],
-        expand=True,
-    )
-
-    output_tabs = ft.Tabs(
-        selected_index=0,
-        animation_duration=300,
-        tabs=[
-            ft.Tab(text="Scan Output", content=scan_output_log_area),
-            ft.Tab(text="Ports/Hosts", content=ft.Column([ports_hosts_table], scroll="always", expand=True)),
-        ],
-        expand=True,
-    )
-
-
-    # スキャン開始処理
-    def start_scan():
-        # 開始時に既存情報をクリアして画面更新
-        scan_output_log_area.controls.clear()
-        ports_hosts_table.rows.clear()
-        status_text.value = f"{SCANNING_STATUS_SCANNING}"
-        scan_button.disabled = True
-        page.update()
-
-        target_ip = target_input.value
-        port_range_str = port_range_input.value
-        selected_profile = profile_dropdown.value
-        
-        # パース呼び出し
-        try:
-            ports_to_scan = _parse_port_range(port_range_str)
-            print(f"\n--- TCP/UDP Scan (via scan_logic) started for: {target_ip} on ports: {port_range_str} ---")
-        # 不正値の場合は終了
-        except ValueError:
-            scan_output_log_area.controls.append(ft.Text(f"{SCANNING_STATUS_PORTS_DONT_EXIST}", color="red"))
-            scan_button.disabled = False
-            page.update()
-            return
-        # 存在しない場合は終了
-        if not ports_to_scan:
-            scan_output_log_area.controls.append(ft.Text(f"{SCANNING_STATUS_PORTS_DONT_EXIST}", color="red"))
-            scan_button.disabled = False
-            page.update()
-            return
-        
-        # scan_logic.scan_ports を呼び出し
-        def scan_worker():
-            # プロファイルに基づいてスキャン対象ポートを決定
-            tcp_ports_to_scan = None
-            udp_ports_to_scan = None
-
-            if selected_profile == "Default (TCP & UDP)":
-                tcp_ports_to_scan = ports_to_scan
-                udp_ports_to_scan = ports_to_scan
-            elif selected_profile == "TCP Only":
-                tcp_ports_to_scan = ports_to_scan
-            elif selected_profile == "UDP Only":
-                udp_ports_to_scan = ports_to_scan
-
-            scan_results = scan_logic.scan_ports(
-                target_ip=target_ip,
-                tcp_ports=tcp_ports_to_scan,
-                udp_ports=udp_ports_to_scan
-            )
-
-            # UI更新のために結果をメインスレッドに渡す必要があるが、
-            # 本来Fletでは page.update() をワーカースレッドから直接呼ぶことは非推奨。
-            # ここでは、結果表示の更新を行う。
-
-            open_ports_count = 0
-            if not scan_results:
-                scan_output_log_area.controls.append(ft.Text("スキャン結果がありませんでした。", color="orange"))
-            elif any(res.get('status', '').startswith('invalid_ip') for res in scan_results):
-                error_message = f"エラー: {scan_results[0]['status']}"
-                scan_output_log_area.controls.append(ft.Text(error_message, color="red"))
-                ports_hosts_table.rows.append(
-                    ft.DataRow(cells=[
-                        ft.DataCell(ft.Text(target_ip)),
-                        ft.DataCell(ft.Text("-")),
-                        ft.DataCell(ft.Text("-")),
-                        ft.DataCell(ft.Text(error_message, color="red")),
-                        ft.DataCell(ft.Text("-")),
-                    ])
-                )
-            else:
-                for res_item in scan_results: # scan_logicからの結果は既にソート済み
-                    # "Scan Output" Tab
-                    text_widget, is_open, service_name_for_col, description_for_col = _create_result_text_widget(res_item, PORT_SERVICES)
-                    if text_widget:
-                        scan_output_log_area.controls.append(text_widget)
-                    if is_open:
-                        open_ports_count += 1
-                    
-                    # "Ports/Hosts" Tab - 'closed' 以外を表示
-                    if res_item['status'] != 'closed':
-                        # banner_info = res_item.get('banner', "N/A") # バナー情報はロールバックしたため、この行は不要
-
-                        ports_hosts_table.rows.append(
-                            ft.DataRow(cells=[
-                                ft.DataCell(ft.Text(target_ip)),
-                                ft.DataCell(ft.Text(str(res_item['port']))),
-                                ft.DataCell(ft.Text(res_item.get('type', 'N/A').upper())),
-                                ft.DataCell(ft.Text(res_item['status'], color=text_widget.color if text_widget else "default")),
-                                ft.DataCell(ft.Text(service_name_for_col if service_name_for_col else "N/A")), # "Service" カラム
-                                ft.DataCell(ft.Text(description_for_col if description_for_col else "N/A")), # "Version" カラム
-                            ])
-                        )
-                
-                # スキャン結果があり (invalid_ipエラーではなく)、オープンポートが一つも見つからなかった場合
-                if open_ports_count == 0:
-                    scan_output_log_area.controls.append(ft.Text("オープンポートは見つかりませんでした。", color="blue"))
-
-            status_text.value = f"{SCANNING_STATUS_COMPLETED}"
-            scan_button.disabled = False
-            page.update()
-        
-        # 非同期で実行
-        threading.Thread(target=scan_worker, daemon=True).start()
-
-
-    # UI要素を画面に追加
-    page.add(
-        ft.Column(
-            [
-                ft.ResponsiveRow(
-                    [
-                        ft.Container(content=target_input, padding=5, col={'xs': 12, 'sm': 6, 'md': 6}),
-                        ft.Container(content=profile_dropdown, padding=5, col={'xs': 12, 'sm': 6, 'md': 6}),
-                    ],
-                    alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
-                ),
-                ft.ResponsiveRow(
-                    [
-                        ft.Container(content=port_range_input, padding=5, col={'xs': 12, 'sm': 12, 'md': 10}),
-                        ft.Container(content=scan_button, padding=5, margin=ft.margin.only(top=3), col={'xs': 12, 'sm': 12, 'md': 2})
-                    ],
-                    alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
-                ),
-                ft.Row(
-                    [
-                        ft.Text("Status:"),
-                        ft.Container(content=status_text),
-                    ],
-                    alignment=ft.MainAxisAlignment.START
-                ),
-                output_tabs, # 結果表示エリアをタブに置き換え
-            ],
-            expand=True
-        )
-    )
+    app = EasyScanApp(page)
+    page.add(app)
 
 if __name__ == "__main__":
     ft.app(target=main)
