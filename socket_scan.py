@@ -21,8 +21,8 @@ Caution!!
 # --- Constants ---
 TARGET_IP_DEFAULT = "127.0.0.1" # 安全のためデフォルトはローカルホスト
 PORT_RANGE_DEFAULT = "1-1024" 
-SOCKET_TIMEOUT = 1 # 動作の確実性を担保するために1秒指定 短くしてもよい
-MAX_WORKERS = 200
+SOCKET_TIMEOUT = 2 # 動作の確実性を担保するために1秒指定 短くしてもよい
+MAX_WORKERS = 20
 
 # --- Scanning statuses ---
 SCANNING_STATUS_PREPARING = "準備完了"

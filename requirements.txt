@@ -1,1 +1,3 @@
-flet
+flet==0.28.3
+flet-desktop==0.28.3
+scapy==2.6.1

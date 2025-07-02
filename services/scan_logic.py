@@ -2,12 +2,12 @@ from scapy.all import IP, TCP, UDP, sr1, conf, ICMP
 import platform
 import socket
 import json
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import ProcessPoolExecutor, as_completed
 
 
 # --- Constants ---
-DEFAULT_TIMEOUT_TCP = 3
-MAX_SCAN_WORKERS_TCP = 2
+DEFAULT_TIMEOUT_TCP = 2
+MAX_SCAN_WORKERS_TCP = 3
 DEFAULT_TIMEOUT_UDP = 5
 MAX_SCAN_WORKERS_UDP = 2
 
@@ -97,7 +97,7 @@ def tcp_scan(target_ip: str, ports: list[int], timeout: int = DEFAULT_TIMEOUT_TC
     """
     scan_results = [] # 初期化
 
-    with ThreadPoolExecutor(max_workers=MAX_SCAN_WORKERS_TCP) as executor:
+    with ProcessPoolExecutor(max_workers=MAX_SCAN_WORKERS_TCP) as executor:
         future_to_port = {
             executor.submit(_scan_single_tcp_port, target_ip, port, timeout): port
             for port in ports
@@ -171,7 +171,7 @@ def udp_scan(target_ip: str, ports: list[int], timeout: int = DEFAULT_TIMEOUT_UD
     """
     scan_results = [] # Initialize scan_results
 
-    with ThreadPoolExecutor(max_workers=MAX_SCAN_WORKERS_UDP) as executor:
+    with ProcessPoolExecutor(max_workers=MAX_SCAN_WORKERS_UDP) as executor:
         future_to_port = {
             executor.submit(_scan_single_udp_port, target_ip, port, timeout): port
             for port in ports

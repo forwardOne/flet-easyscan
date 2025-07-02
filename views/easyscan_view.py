@@ -1,5 +1,4 @@
 import flet as ft
-import json
 import threading
 from services import scan_logic
 from utils import load_port_services, parse_port_range, create_result_text_widget
@@ -75,8 +74,9 @@ class EasyScanView(ft.Container):
         self.content = self.build()
     
     # build メソッドでUIレイアウトを定義
-    def build(self): 
-        return ft.Column(
+    def build(self):
+        # --- Scan Configuration Section ---
+        scan_config_content = ft.Column(
             [
                 ft.ResponsiveRow(
                     [
@@ -92,14 +92,53 @@ class EasyScanView(ft.Container):
                     ],
                     alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
                 ),
-                ft.Row(
-                    [
-                        ft.Text("Status:"),
-                        ft.Container(content=self.status_text),
-                    ],
-                    alignment=ft.MainAxisAlignment.START
-                ),
-                self.output_tabs,
+            ]
+        )
+
+        scan_config_container = ft.Container(
+            content=ft.Column(
+                [
+                    ft.Text("Scan Configuration", style=ft.TextThemeStyle.TITLE_LARGE),
+                    scan_config_content,
+                ]
+            ),
+            padding=15,
+            border=ft.border.all(1, ft.Colors.OUTLINE),
+            border_radius=ft.border_radius.all(10),
+            margin=ft.margin.only(bottom=20)
+        )
+
+        # --- Results Section ---
+        results_container = ft.Container(
+            content=ft.Column(
+                [
+                    ft.Row(
+                        [
+                            ft.Text("Results", style=ft.TextThemeStyle.TITLE_LARGE),
+                            ft.Row(
+                                [
+                                    ft.Text("Status:"),
+                                    self.status_text,
+                                ],
+                            ),
+                        ],
+                        alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                    ),
+                    self.output_tabs,
+                ],
+                expand=True,
+            ),
+            padding=15,
+            border=ft.border.all(1, ft.Colors.OUTLINE),
+            border_radius=ft.border_radius.all(10),
+            expand=True,
+        )
+
+        return ft.Column(
+            [
+                ft.Text("Easy Scan", style=ft.TextThemeStyle.HEADLINE_MEDIUM, weight=ft.FontWeight.BOLD),
+                scan_config_container,
+                results_container,
             ],
             expand=True
         )
@@ -111,15 +150,21 @@ class EasyScanView(ft.Container):
         self.ports_hosts_table.rows.clear()
         self.status_text.value = f"{SCANNING_STATUS_SCANNING}"
         self.scan_button.disabled = True
-        self.page.update()
 
         target_ip = self.target_input.value
         port_range_str = self.port_range_input.value
+        selected_profile = self.profile_dropdown.value
+
+        # スキャン情報をOutputエリアの先頭に表示
+        scan_info_text = f"--- {selected_profile} Scan started for: {target_ip} on ports: {port_range_str} ---"
+        self.scan_output_log_area.controls.append(ft.Text(scan_info_text))
         
+        self.page.update()
+
         # パース呼び出し
         try:
             ports_to_scan = parse_port_range(port_range_str)
-            print(f"\n--- TCP/UDP Scan (via scan_logic) started for: {target_ip} on ports: {port_range_str} ---")
+            print(f"\n--- {selected_profile} Scan (via scan_logic) started for: {target_ip} on ports: {port_range_str} ---")
         # 不正値の場合は終了
         except ValueError:
             self.scan_output_log_area.controls.append(ft.Text(f"{SCANNING_STATUS_VALUE_ERROR}", color="red"))
