@@ -1,0 +1,46 @@
+[
+    {
+        "title": "Implement MFA for Admin Access",
+        "subtitle": "Enhance security for critical systems",
+        "description": "Configure multi-factor authentication (MFA) for all administrative accounts across production and development environments. Ensure compatibility with existing SSO solutions.",
+        "tags": [
+            "Security",
+            "Authentication",
+            "MFA"
+        ],
+        "status": "IN PROGRESS"
+    },
+    {
+        "title": "Conduct Penetration Testing",
+        "subtitle": "Identify vulnerabilities in web application",
+        "description": "Schedule and execute a comprehensive penetration test on the main web application. Prioritize OWASP Top 10 vulnerabilities and generate a detailed report with remediation steps.",
+        "tags": [
+            "Vulnerability",
+            "Testing",
+            "Web Security"
+        ],
+        "status": "TODO"
+    },
+    {
+        "title": "Update Firewall Rules",
+        "subtitle": "Restrict unauthorized network access",
+        "description": "Review and update firewall rules to block known malicious IP addresses and restrict access to sensitive ports. Implement a change management process for all firewall modifications.",
+        "tags": [
+            "Network Security",
+            "Firewall",
+            "Compliance"
+        ],
+        "status": "COMPLETED"
+    },
+    {
+        "title": "Develop Security Awareness Training",
+        "subtitle": "Educate employees on phishing and social engineering",
+        "description": "Create and deploy an interactive security awareness training module for all employees. Focus on recognizing phishing attempts, social engineering tactics, and data handling best practices.",
+        "tags": [
+            "Training",
+            "Human Factor",
+            "Awareness"
+        ],
+        "status": "IN PROGRESS"
+    }
+]
