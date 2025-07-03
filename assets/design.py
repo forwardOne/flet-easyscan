@@ -1,44 +1,49 @@
 import flet as ft
+import json
+
+TASKS_FILE = "C:\\MyProject\\flet-easyscan\\assets\\tasks.json"
 
 def main(page: ft.Page):
     page.bgcolor = "#1F2227"
     page.padding = 0
+    # page.window.frameless = True
 
-    # --- データ定義 ---
-    state = {"selected_index": 0}
-    tasks = [
-        {
-            "title": "Implement graph API",
-            "subtitle": "Digital dashboards allow managers...",
-            "tags": ["API", "BACKEND", "V1"],
-            "description": "- Ability to identify and correct negative trends\n- Visual presentation of performance measures",
-            "status": "IN PROGRESS"
-        },
-        {
-            "title": "Upgrade positioning module",
-            "subtitle": "The fruit of the orange tree...",
-            "tags": ["UPGRADE", "DEV", "V2"],
-            "description": "- Refactor legacy code\n- Implement new algorithms\n- Add unit tests",
-            "status": "COMPLETED"
-        },
-    ]
+    # --- データ管理 ---
+    def load_tasks():
+        try:
+            with open(TASKS_FILE, "r") as f: return json.load(f)
+        except (FileNotFoundError, json.JSONDecodeError): return []
+
+    def save_tasks(tasks_data):
+        with open(TASKS_FILE, "w") as f: json.dump(tasks_data, f, indent=4)
+
+    tasks = load_tasks()
+    state = {
+        "selected_index": 0 if tasks else -1,
+        "is_editing": False # 編集状態を管理するフラグ
+    }
+    status_colors = {"IN PROGRESS": "#F7C948", "COMPLETED": "#00FF88", "TODO": "#FF6B6B"}
 
     # --- UI生成関数 ---
     def on_task_click(e):
+        # タスクを切り替えるときは編集状態をリセット
+        if state["is_editing"]:
+            state["is_editing"] = False
         state["selected_index"] = e.control.data
         update_view()
 
-    def task_card(title: str, subtitle: str, index: int, is_selected: bool):
+    def task_card(title: str, subtitle: str, index: int, is_selected: bool, status: str):
+        status_indicator = ft.CircleAvatar(bgcolor=status_colors.get(status, "#888888"), radius=5)
         return ft.Container(
-            on_click=on_task_click,
-            data=index,
-            padding=ft.padding.symmetric(vertical=15, horizontal=20),
-            bgcolor="#2A2D32" if not is_selected else "#3A3F45",
-            border_radius=5,
-            content=ft.Column([
-                ft.Text(title, color="white", size=16),
-                ft.Text(subtitle, color="#888888", size=12),
-            ], spacing=5, horizontal_alignment=ft.CrossAxisAlignment.START)
+            on_click=on_task_click, data=index, padding=ft.padding.symmetric(vertical=15, horizontal=20),
+            bgcolor="#2A2D32" if not is_selected else "#3A3F45", border_radius=5,
+            content=ft.Row([
+                status_indicator,
+                ft.Column([
+                    ft.Text(title, color="white", size=16),
+                    ft.Text(subtitle, color="#888888", size=12),
+                ], spacing=5, horizontal_alignment=ft.CrossAxisAlignment.START, expand=True)
+            ], spacing=15, vertical_alignment=ft.CrossAxisAlignment.CENTER)
         )
 
     def create_task_detail_view(index: int):
@@ -46,70 +51,50 @@ def main(page: ft.Page):
             return ft.Column([ft.Text("Select a task", size=18, weight="bold", color="white")])
 
         task = tasks[index]
-        status_colors = {"IN PROGRESS": "#00FF88", "COMPLETED": "#4D90FE", "TODO": "#F7C948"}
+
+        def start_editing(e):
+            state["is_editing"] = True
+            update_view()
+
+        def save_and_exit_editing(e):
+            new_description = e.control.value
+            tasks[index]["description"] = new_description
+            save_tasks(tasks)
+            state["is_editing"] = False
+            update_view()
+
+        if state["is_editing"]:
+            description_content = ft.TextField(
+                value=task["description"], multiline=True, border_color="#4D90FE", 
+                on_blur=save_and_exit_editing, expand=True, autofocus=True
+            )
+        else:
+            description_content = ft.Row([
+                ft.Text(task["description"], color="#CCCCCC", size=12, selectable=True, expand=True),
+                ft.IconButton(icon=ft.Icons.EDIT, icon_color="#CCCCCC", on_click=start_editing, tooltip="Edit description")
+            ], vertical_alignment=ft.CrossAxisAlignment.START)
 
         return ft.Column([
             ft.Text(task["title"], size=20, weight="bold", color="white"),
             ft.Row([ft.Container(padding=ft.padding.symmetric(horizontal=6, vertical=2), bgcolor="#4D90FE", border_radius=4, content=ft.Text(tag, size=10, color="white")) for tag in task["tags"]], spacing=5),
-            ft.Container(height=15),
-            ft.Text(task["description"], color="#CCCCCC", size=12, selectable=True),
+            ft.Container(content=description_content, padding=ft.padding.only(top=10)),
             ft.Container(height=20),
-            ft.Row([
-                ft.Text(f"Status: {task['status']}", color=status_colors.get(task['status'], "white"))
-            ], spacing=10)
+            ft.Row([ft.Text(f"Status: {task['status']}", color=status_colors.get(task['status'], "white"))], spacing=10)
         ], spacing=8)
 
     def create_ai_agent_view():
         chat_history = ft.ListView(
-            expand=True,
-            spacing=15,
+            expand=True, spacing=15,
             controls=[
-                ft.Row([
-                    ft.CircleAvatar(content=ft.Text("AI"), bgcolor="#4D90FE", color="white", radius=16),
-                    ft.Container(
-                        padding=12,
-                        border_radius=10,
-                        bgcolor="#2A2D32",
-                        content=ft.Text("Hello! How can I assist with your project tasks today?", color="white", size=14)
-                    )
-                ], spacing=10),
-                ft.Row([
-                    ft.Container(
-                        padding=12,
-                        border_radius=10,
-                        bgcolor="#3A3F45",
-                        content=ft.Text("Can you explain the 'Upgrade positioning module' task in more detail?", color="white", size=14)
-                    )
-                ], alignment=ft.MainAxisAlignment.END),
-                ft.Row([
-                    ft.CircleAvatar(content=ft.Text("AI"), bgcolor="#4D90FE", color="white", radius=16),
-                    ft.Container(
-                        padding=12,
-                        border_radius=10,
-                        bgcolor="#2A2D32",
-                        content=ft.Markdown(
-                            "Of course. The **'Upgrade positioning module'** involves refactoring legacy code, implementing new positioning algorithms for better accuracy, and adding comprehensive unit tests to ensure stability. It's currently marked as 'COMPLETED'.",
-                            selectable=True, extension_set="git-hub-flavored", code_theme="atom-one-dark"
-                        )
-                    )
-                ], spacing=10),
+                ft.Row([ft.CircleAvatar(content=ft.Text("G"), bgcolor="#9C27B0", color="white", radius=16), ft.Container(padding=12, border_radius=10, bgcolor="#2A2D32", content=ft.Text("Hello! I'm Gemini. How can I help you with your cybersecurity tasks today?", color="white", size=14))], spacing=10),
+                ft.Row([ft.Container(padding=12, border_radius=10, bgcolor="#3A3F45", content=ft.Text("Can you explain the 'Implement MFA for Admin Access' task in more detail?", color="white", size=14),expand=True)], alignment=ft.MainAxisAlignment.END),
+                ft.Row([ft.CircleAvatar(content=ft.Text("G"), bgcolor="#9C27B0", color="white", radius=16), ft.Container(padding=12, border_radius=10, bgcolor="#2A2D32", content=ft.Text("Of course. The **'Implement MFA for Admin Access'** task involves configuring multi-factor authentication for all administrative accounts across production and development environments, ensuring compatibility with existing SSO solutions. It's currently marked as 'IN PROGRESS'.", color="white", size=14) ,expand=True)], spacing=10),
             ]
         )
-
         input_form = ft.Row([
-            ft.TextField(
-                hint_text="Send a message to the agent...",
-                expand=True,
-                border_color="#3A3F45",
-                border_radius=10,
-                color="white",
-                bgcolor="#2A2D32",
-                height=40,
-                content_padding=10,
-            ),
+            ft.TextField(hint_text="Send a message to the agent...", expand=True, border_color="#3A3F45", border_radius=10, color="white", bgcolor="#2A2D32", height=40, content_padding=10),
             ft.IconButton(icon=ft.Icons.SEND_ROUNDED, icon_color="white", bgcolor="#4D90FE")
         ], spacing=10)
-
         return ft.Column([chat_history, input_form], expand=True, spacing=15)
 
     # --- UIレイアウト ---
@@ -121,10 +106,8 @@ def main(page: ft.Page):
             ft.NavigationRailDestination(icon=ft.Icons.SETTINGS_OUTLINED, selected_icon=ft.Icons.SETTINGS, label="Settings"),
         ]
     )
-
     task_detail_view_content = ft.Column()
     task_list_view = ft.Column(spacing=10, horizontal_alignment=ft.CrossAxisAlignment.STRETCH, scroll=ft.ScrollMode.AUTO)
-
     left_panel = ft.Container(
         padding=20, bgcolor="#1F2227", expand=1,
         content=ft.Column([
@@ -134,7 +117,6 @@ def main(page: ft.Page):
             ft.Container(content=task_list_view, expand=True),
         ], spacing=10)
     )
-
     right_panel = ft.Container(
         padding=20, bgcolor="#3A3F45", expand=1,
         content=create_ai_agent_view()
@@ -142,7 +124,7 @@ def main(page: ft.Page):
 
     def update_view():
         selected_index = state["selected_index"]
-        task_list_view.controls = [task_card(t["title"], t["subtitle"], i, selected_index == i) for i, t in enumerate(tasks)]
+        task_list_view.controls = [task_card(t["title"], t["subtitle"], i, selected_index == i, t["status"]) for i, t in enumerate(tasks)]
         task_detail_view_content.controls = [create_task_detail_view(selected_index)]
         page.update()
 
