@@ -1,4 +1,4 @@
-# Flet EasyScan
+# Flet-Easy-LowLayer-Scanner
 
 PythonのGUIフレームワーク [Flet](https://flet.dev/) を使用して作成された、ポートスキャナーアプリケーションです。
 ネットワークの学習や、ローカル環境でのポート開放状態の確認などを手軽に行うことを目的としています。
