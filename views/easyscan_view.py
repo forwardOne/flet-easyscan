@@ -5,7 +5,7 @@ from utils import load_port_services, parse_port_range, create_result_text_widge
 
 # --- Constants ---
 TARGET_IP_DEFAULT = "127.0.0.1" # localhost
-PORT_RANGE_DEFAULT = "1-450,5357" # safe range for testing
+PORT_RANGE_DEFAULT = "1-1024" # safe range for testing
 
 # --- Service Name Mapping ---
 SERVICES_FILE_PATH = "data/services_name.json"
@@ -136,7 +136,6 @@ class EasyScanView(ft.Container):
 
         return ft.Column(
             [
-                ft.Text("Easy Scan", style=ft.TextThemeStyle.HEADLINE_MEDIUM, weight=ft.FontWeight.BOLD),
                 scan_config_container,
                 results_container,
             ],
