@@ -49,7 +49,7 @@ PythonのGUIフレームワーク [Flet](https://flet.dev/) を使用して作�
 1. **リポジトリをクローンします。**
    ```bash
    git clone <repository-url>
-   cd flet-easyscan
+   cd Flet-Easy-LowLayer-Scanner
    ```
 
 2. **必要なライブラリをインストールします。**
